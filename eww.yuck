@@ -1,0 +1,117 @@
+(defwindow menu
+    :monitor 0
+    :geometry (geometry :x "12px" :y "20px"
+                        :width "350px"
+                        :anchor "top right")
+    :stacking "overlay"
+    (menu_widget)
+)
+
+(defpoll USERNAME :interval "5s" "whoami")
+(defpoll HOST     :interval "5s" "hostname")
+
+(defpoll hour   :interval "1s" "date '+%H'")
+(defpoll min    :interval "1s" "date '+%M'")
+(defpoll sec    :interval "1s" "date '+%S'")
+
+(defpoll day   :interval "15m" "date '+%d'")
+(defpoll month :interval "10h" "date '+%m'")
+(defpoll year  :interval "10h" "date '+%Y'")
+
+(defpoll current-volume     :interval "50ms" "pamixer --get-volume")
+(defpoll current-brightness :interval "50ms" "brightnessctl -m -d intel_backlight | awk -F, '{print substr($4, 0, length($4)-1)}'")
+(defpoll current-battery    :interval "30s" "cat /sys/class/power_supply/BAT0/capacity")
+
+(defwidget menu_widget[]
+    (box :orientation "v" 
+        :class "menu-widget"
+        :space-evenly "false"
+
+        (box 
+            :class "top-box"
+            :orientation "v"
+
+            ; USER & BUTTONS
+            (box :class "profile-box" :space-evenly "false"
+                (image :class "profile-picture")
+
+                (box :class "profile-button-box" :orientation "v"
+                    (label :halign "center" :text "${USERNAME} @ ${HOST}" :class "user-name")
+                    (box :orientation "h"
+                         :spacing 10
+                         :halign "end"
+                        (button 
+                            :class "settings-button"
+                            :onclick "sh ~/.config/home-manager/scripts/launch_ranger.sh"
+                            (label :text "󰥨" :class "settings-button-label"))
+                        (button 
+                            :class "logout-button"
+                            :onclick "sh 'pkill sway'"
+                            (label :text "" :class "logout-button-label"))
+                        (button 
+                            :class "power-button"
+                            :onclick "sh ~/.config/home-manager/scripts/shutdown.sh"
+                            (label :text "⏻" :class "power-button-label"))
+                    )
+                )
+            )
+        )
+
+        ; DATE AND TIME
+        ;(box :orientation "h" :class "date-box"
+            ;(box :class "time" (label :text "  ${hour} ${min} ${sec}"))
+            ;(label :text "||" :class "date-seperator")
+            ;(box :class "date" (label :text "  ${day} ${month} ${year}"))
+        ;)
+
+        (box
+            :class "battery-box"
+            :space-evenly "false"
+            :orientation "v"
+            (label :text "Battery ${current-battery}%" :class "battery-label" :halign "start")
+            (scale 
+                :class "battery-slider"
+                :hexpand "true"
+                :min "0" :max "100"
+                :value current-battery)
+        )
+
+        ; VOLUME & BACKLIGHT
+        (box
+            :class "control-box"
+            :valign "start"
+            :orientation "h"
+            :spacing 12
+
+            (box
+                :class "volume-box"
+                :space-evenly "false"
+                :orientation "v"
+                (label :text "Volume ${current-volume}%" :class "volume-label" :halign "start")
+                (scale 
+                    :class "volume-slider"
+                    :hexpand "true"
+                    :min "0" :max "101"
+                    :onchange "pamixer --set-volume {}"
+                    :value current-volume)
+            )
+            (box
+                :class "backlight-box"
+                :space-evenly "false"
+                :orientation "v"
+                (label :text "Brightness ${current-brightness}%" :class "backlight-label" :halign "start")
+                (scale 
+                    :class "backlight-slider"
+                    :hexpand "true"
+                    :min "20" :max "101"
+                    :onchange "brightnessctl set {}%"
+                    :value current-brightness)
+            )
+        )
+
+        (box :class "bot-div"
+            :orientation "v"
+            :space-evenly "false"
+        )
+    )
+)
