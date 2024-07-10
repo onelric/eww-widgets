@@ -1,7 +1,7 @@
 (defwindow menu
     :monitor 0
     :geometry (geometry :x "12px" :y "20px"
-                        :width "350px"
+                        :width "370px"
                         :anchor "top right")
     :stacking "overlay"
     (menu_widget)
@@ -22,6 +22,15 @@
 (defpoll current-brightness :interval "50ms" "brightnessctl -m -d intel_backlight | awk -F, '{print substr($4, 0, length($4)-1)}'")
 (defpoll current-battery    :interval "30s" "cat /sys/class/power_supply/BAT0/capacity")
 
+(deflisten playerctl-artist :initial "{}" "./scripts/get_song_artist.sh")
+(deflisten playerctl-title :initial "{}" "./scripts/get_song_title.sh")
+
+(defpoll playerctl-track-length :interval "1s" "playerctl --player=spotify metadata --format '{{ mpris:length }}' | awk '{print $1 / 1000000}'")
+(defpoll playerctl-track-progress :interval "1s" "playerctl --player=spotify position")
+
+(defpoll playerctl-track-length-label :interval "1s" "playerctl --player=spotify metadata --format '{{ duration(mpris:length) }}'")
+(defpoll playerctl-track-progress-label :interval "1s" "playerctl --player=spotify position --format '{{ duration(position) }}'")
+
 (defwidget menu_widget[]
     (box :orientation "v" 
         :class "menu-widget"
@@ -39,10 +48,9 @@
                     (label :halign "center" :text "${USERNAME} @ ${HOST}" :class "user-name")
                     (box :orientation "h"
                          :spacing 10
-                         :halign "end"
                         (button 
                             :class "settings-button"
-                            :onclick "sh ~/.config/home-manager/scripts/launch_ranger.sh"
+                            :onclick "sh ~/.config/home-manager/scripts/kitty_sessions/launch_ranger.sh"
                             (label :text "󰥨" :class "settings-button-label"))
                         (button 
                             :class "logout-button"
@@ -50,30 +58,44 @@
                             (label :text "" :class "logout-button-label"))
                         (button 
                             :class "power-button"
-                            :onclick "sh ~/.config/home-manager/scripts/shutdown.sh"
+                            :onclick "sh ~/.config/home-manager/scripts/kitty_sessions/shutdown.sh"
                             (label :text "⏻" :class "power-button-label"))
                     )
                 )
             )
         )
 
-        ; DATE AND TIME
-        ;(box :orientation "h" :class "date-box"
-            ;(box :class "time" (label :text "  ${hour} ${min} ${sec}"))
-            ;(label :text "||" :class "date-seperator")
-            ;(box :class "date" (label :text "  ${day} ${month} ${year}"))
-        ;)
-
-        (box
-            :class "battery-box"
-            :space-evenly "false"
+        ; PLAYERCTL
+        (box :class "playerctl-box"
             :orientation "v"
-            (label :text "Battery ${current-battery}%" :class "battery-label" :halign "start")
-            (scale 
-                :class "battery-slider"
-                :hexpand "true"
-                :min "0" :max "100"
-                :value current-battery)
+            (box :class "playerctl-track-info" 
+                :orientation "h" 
+                :space-evenly "true"
+
+                (box :orientation "v"
+                    (label :text playerctl-artist :class "playerctl-artist-label")
+                    (label :text playerctl-title :class "playerctl-track-label")
+                )
+
+                (box :halign "end" :spacing 7 :valign "center"
+                    (button :onclick "playerctl previous" :class "playerctl-button" (label :text "" :class "playerctl-next-previous-label"))
+                    (button :onclick "playerctl play-pause" :class "playerctl-button" (label :text "" :class "playerctl-pause-label"))
+                    (button :onclick "playerctl next" :class "playerctl-button" (label :text "" :class "playerctl-next-previous-label"))
+                )
+            )
+            (box :class "player-progress-box" 
+                 :space-evenly "false"
+                 :orientation "h"
+                 :spacing 10
+                 (label :text playerctl-track-progress-label :class "playerctl-track-position")
+                 (scale 
+                    :class "playerctl-slider"
+                    :hexpand "true"
+                    :min "0" :max "${playerctl-track-length}"
+                    ;:onchange "playerctl position {}"
+                    :value playerctl-track-progress)
+                 (label :text playerctl-track-length-label :class "playerctl-track-length")
+            )
         )
 
         ; VOLUME & BACKLIGHT
@@ -109,9 +131,17 @@
             )
         )
 
-        (box :class "bot-div"
-            :orientation "v"
+        ; BATTERY
+        (box
+            :class "battery-box"
             :space-evenly "false"
+            :orientation "v"
+            (label :text "Battery ${current-battery}%" :class "battery-label" :halign "start")
+            (scale 
+                :class "battery-slider"
+                :hexpand "true"
+                :min "0" :max "100"
+                :value current-battery)
         )
     )
 )
